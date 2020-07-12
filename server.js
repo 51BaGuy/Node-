@@ -1,13 +1,24 @@
-// 相對此前從route()函數取得回傳值的做法，這次我們將response物件作為第三個參數傳遞給route()函數，並且，我們將onRequest()處理程序中所有有關response的函數調都移除，因為我們希望這部分工作讓route()函數來完成。
 var http = require("http");
 var url = require("url");
 
 function start(route, handle) {
   function onRequest(request, response) {
+    var postData = "";
     var pathname = url.parse(request.url).pathname;
     console.log("Request for " + pathname + " received.");
+    // 設定了接收資料的編碼格式為UTF-8
+    request.setEncoding("utf8");
+    // 註冊了 "data" 事件的監聽器，用於收集每次接收到的新資料區塊，並將其賦值給postData 變數
+    request.addListener("data", function(postDataChunk) {
+      postData += postDataChunk;
+      console.log("Received POST data chunk '"+
+      postDataChunk + "'.");
+    });
+    // 我們將請求路由的執行移到end事件處理程序中，以確保它只會當所有資料接收完畢後才觸發，並且只觸發一次。我們同時還把POST資料傳遞給請求路由，因為這些資料，請求處理程序會用到
+    request.addListener("end", function() {
+      route(handle, pathname, response, postData);
+    });
 
-    route(handle, pathname, response);
   }
 
   http.createServer(onRequest).listen(8888);
